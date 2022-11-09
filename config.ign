@@ -1,0 +1,68 @@
+{
+  "ignition": {
+    "version": "3.3.0"
+  },
+  "passwd": {
+    "users": [
+      {
+        "groups": [
+          "sudo",
+          "wheel"
+        ],
+        "name": "core",
+        "sshAuthorizedKeys": [
+          "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMABwIDFfdiUNdcxuykWeerVEiCIjzw/A8ZBz7HL+Ar7 core"
+        ]
+      }
+    ]
+  },
+  "storage": {
+    "files": [
+      {
+        "overwrite": true,
+        "path": "/etc/yum.repos.d/devel:kubic:libcontainers:stable.repo",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/7TOQUrGMBAF4H1OkaUu7PAjuCh06wEUVyJlmjzb0CQTMqna20srKB7g372Bebzv1eMDcVy3KbgxhslJbhwyqo7aeIp4M5kThufzsE+IYIVaebcvRVsFJzuHtmxT5yTRX90WdivPUHvzCC+Vx/uHW9P2gqGWdJe8mVix1TgsrRXtibx85ijsOynIuik6qTNVFNHQpAYondieTm1P/7g9/Xjpd43MXGa3wK3D5Ygr9uttHVXPjc+QfPeVYrdiN8jHox8u5jsAAP//vOKG/moBAAA="
+        },
+        "mode": 420
+      },
+      {
+        "overwrite": true,
+        "path": "/etc/yum.repos.d/devel:kubic:libcontainers:stable:cri-o:1.25.repo",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/7zNQU7EIBjF8T2ncKmL4Us1uiBh6yWMIRReOqTAR4Cqvb2hNSZzgdm9zf/9Pjy+EM26zcGZGGbHuduQUZtp3c4RxtVwYTPJ59dPkW2CPgp1FOqmUGehjkKN4uHxHZ6rNS9vT6LvBbqWdElezLZhq1Ffey9NEXn+zpGtl1yQ29YguS5UUbiFzjWg0cnS6dItTH8ynTQNm/5pEktZ3BVu1dOYK/Y7wePH226Pkbz8SVGu2AXyqLyexG8AAAD//8xy3XCAAQAA"
+        },
+        "mode": 420
+      },
+      {
+        "overwrite": true,
+        "path": "/etc/yum.repos.d/kubernetes.repo",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/4yNPYoDMQxGe59ii21ts9VCwCfIEUIKjfyhActj4x/I3D5MEpI21RPi471LmgvahoF+NRtlhPP7YRbqmE3DOkbtJ+8rcSJBd6xlRieliMJxyX6f2TfU0v3HZ6H/9vdwUOPVYKNFEcOfkSq8gtPzTNi/DMTCvtVsXyubsDupYnBjnRHhSCvGz0GK+UEeau4BAAD//wjOq67kAAAA"
+        },
+        "mode": 420
+      },
+      {
+        "overwrite": true,
+        "path": "/etc/modules-load.d/crio.conf",
+        "contents": {
+          "compression": "",
+          "source": "data:,br_netfilter%0Aoverlay%0A"
+        },
+        "mode": 420
+      },
+      {
+        "overwrite": true,
+        "path": "/etc/sysctl.d/99-kubernetes-cri.conf",
+        "contents": {
+          "compression": "gzip",
+          "source": "data:;base64,H4sIAAAAAAAC/8pLLdFLKspMSU+FUrp5abrJiTk5upkFJYlJOanFCgq2CoZcIHWZBWUmepkF8Wn5ReWJRSkK6ACmDpd5ZlADQeoAAQAA//+oBVrmeAAAAA=="
+        },
+        "mode": 420
+      }
+    ]
+  }
+}
