@@ -1,0 +1,40 @@
+---
+- hosts: all
+  become: true
+  tasks:
+  - name: Helm install
+    block:
+      - name: Download helm
+        ansible.builtin.get_url: 
+          url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+          dest: /tmp/get_helm.sh
+          mode: 0775
+        ignore_errors: true 
+        register: download
+
+      - name: Install Helm
+        ansible.builtin.command: /tmp/get_helm.sh
+        when: download
+        register: install_helm
+        become_user: vagrant
+        become: false
+
+  - name: Install Kubernetes Metrics server
+    block:
+      - name: Add Metric server Helm repo
+        ansible.builtin.shell: |
+          helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+          helm repo update
+        become_user: vagrant
+        become: false
+
+      - name: Install Metrics Server
+        ansible.builtin.shell: helm upgrade --install metrics-server metrics-server/metrics-server -n kube-system
+        ignore_errors: true
+        become_user: vagrant
+        become: false
+
+  - name: Kubelet certificates approve
+    ansible.builtin.shell: kubectl get csr --no-headers | grep Pending |  awk '{print $1}' | tr '\n' ' ' | xargs kubectl certificate approve
+    become_user: vagrant
+    become: false

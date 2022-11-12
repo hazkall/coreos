@@ -1,3 +1,4 @@
 core
 core.pub
-fedora-coreos-36.20221014.3.1-virtualbox.x86_64.ova
+fedora-coreos-36.20221014.3.1-qemu.x86_64.qcow2
+coreos.box

@@ -1,0 +1,62 @@
+---
+- hosts: all
+  become: true
+  tasks:
+  - name: Configure Kubernetes Network
+    block:
+      - name: Ensure Network modules
+        community.general.modprobe:
+          name: "{{ item }}"
+          state: present
+        loop:
+          - overlay
+          - br_netfilter
+
+  - name: Enable CRI-O
+    block:
+      - name: Start service CRI-O
+        ansible.builtin.service:
+          name: crio
+          daemon_reload: true
+          state: started
+          enabled: true
+
+  - name: Enable Kubelet
+    block:
+      - name: Start kubelet
+        ansible.builtin.service:
+          name: kubelet
+          enabled: true
+
+  - name: Token Join for worker nodes
+    block:
+      - name: Copy the join command to server location
+        ansible.builtin.copy:
+          src: join-command
+          dest: /tmp/join-command.sh 
+          mode: 0777
+        register: token_kubeadm
+
+      - name: Join the node to cluster
+        ansible.builtin.command: sh /tmp/join-command.sh
+        when: token_kubeadm is changed
+
+      - name: Pause for 20 seconds for worker node join
+        ansible.builtin.pause:
+          seconds: 20
+
+  - name: Security kubelet Configuration
+    block:
+      - name: Security kubelet
+        ansible.builtin.lineinfile:
+          path: /etc/sysconfig/kubelet
+          regexp: '^KUBELET_EXTRA_ARGS=$'
+          line: "KUBELET_EXTRA_ARGS=--protect-kernel-defaults=true --anonymous-auth=false"
+          mode: 0644
+
+      - name: Restart kubelet
+        ansible.builtin.service:
+          name: kubelet
+          daemon_reload: true
+          state: restarted
+          enabled: true

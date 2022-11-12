@@ -7,16 +7,35 @@
       {
         "groups": [
           "sudo",
-          "wheel"
+          "wheel",
+          "docker"
         ],
         "name": "core",
         "sshAuthorizedKeys": [
           "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMABwIDFfdiUNdcxuykWeerVEiCIjzw/A8ZBz7HL+Ar7 core"
         ]
+      },
+      {
+        "groups": [
+          "sudo",
+          "wheel",
+          "docker"
+        ],
+        "name": "vagrant",
+        "sshAuthorizedKeys": [
+          "ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA6NF8iallvQVp22WDkTkyrtvp9eWW6A8YVr+kz4TjGYe7gHzIw+niNltGEFHzD8+v1I2YJ6oXevct1YeS0o9HZyN1Q9qgCgzUFtdOKLv6IedplqoPkcmF0aYet2PkEDo3MlTBckFXPITAMzF8dJSIFo9D8HfdOV0IAdx4O7PtixWKn5y2hMNG0zQPyUecp4pzC6kivAIhyfHilFR61RGL+GPXQ2MWZWFYbAGjyiYJnAmCP3NOTd0jMZEnDkbUvxhMmBYSdETk1rRgm+R4LOzFUGaHqHDLKLX+FIPKcF96hrucXzcWyLbIbEgE98OHlnVYCzRdK8jlqm8tehUc9c9WhQ== vagrant insecure public key"
+        ]
       }
     ]
   },
   "storage": {
+    "directories": [
+      {
+        "overwrite": true,
+        "path": "/var/lib/crio",
+        "mode": 420
+      }
+    ],
     "files": [
       {
         "overwrite": true,
@@ -41,7 +60,7 @@
         "path": "/etc/yum.repos.d/kubernetes.repo",
         "contents": {
           "compression": "gzip",
-          "source": "data:;base64,H4sIAAAAAAAC/4yNPYoDMQxGe59ii21ts9VCwCfIEUIKjfyhActj4x/I3D5MEpI21RPi471LmgvahoF+NRtlhPP7YRbqmE3DOkbtJ+8rcSJBd6xlRieliMJxyX6f2TfU0v3HZ6H/9vdwUOPVYKNFEcOfkSq8gtPzTNi/DMTCvtVsXyubsDupYnBjnRHhSCvGz0GK+UEeau4BAAD//wjOq67kAAAA"
+          "source": "data:;base64,H4sIAAAAAAAC/4zMQQrCMBCF4X3ukgyCVBF6Ao8gIun0MYUknSFpwN7ehaJbd4/Hz3dLfUJdsaHd3RoLxuv3cFNs6DWPy7ZZuxBZ5BQFLXDWPgdRlYzAWmjvhSpMG/08j3zyz/PwGI4Oa5wy5vHgxIQXcHrPhP1PfVamasV/Kp+wBzFxrwAAAP//2PgGUMEAAAA="
         },
         "mode": 420
       },

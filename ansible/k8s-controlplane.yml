@@ -1,0 +1,178 @@
+---
+- hosts: all
+  become: true
+  tasks:
+  - name: Configure Kubernetes Network
+    block:
+      - name: Ensure Network modules
+        community.general.modprobe:
+          name: "{{ item }}"
+          state: present
+        loop:
+          - overlay
+          - br_netfilter
+
+  - name: Enable CRI-O
+    block:
+      - name: Start service CRI-O
+        ansible.builtin.service:
+          name: crio
+          daemon_reload: true
+          state: started
+          enabled: true
+
+  - name: Enable Kubelet
+    block:
+      - name: Start kubelet
+        ansible.builtin.service:
+          name: kubelet
+          enabled: true
+
+  - name: Kubeadm Cluster bootstrap
+    block:
+      - name: Create kubeadm config file
+        ansible.builtin.blockinfile:
+          path: /tmp/kubeadm-config.yml
+          block: |
+            apiVersion: kubeadm.k8s.io/v1beta3
+            kind: ClusterConfiguration
+            kubernetesVersion: {{ kubernetes_release }}
+            networking:
+              dnsDomain: cluster.local
+              podSubnet: 10.11.0.0/16
+              serviceSubnet: 172.16.0.0/16
+            apiServer:
+              extraVolumes:
+              - name: "audit"
+                hostPath: "/etc/kubernetes/audit-policy.yaml"
+                mountPath: "/etc/kubernetes/audit-policy.yaml"
+                readOnly: true
+                pathType: File
+              - name: "audit-log"
+                hostPath: "/var/log/kubernetes/audit/"
+                mountPath: "/var/log/kubernetes/audit/"
+                readOnly: false
+                pathType: DirectoryOrCreate
+              extraArgs:
+                profiling: "false"
+                enable-admission-plugins: "NodeRestriction,AlwaysPullImages"
+                audit-policy-file: "/etc/kubernetes/audit-policy.yaml"
+                audit-log-path: "/var/log/kubernetes/audit/audit.log"
+                audit-log-maxage: "30"    
+                audit-log-maxbackup: "10" 
+                audit-log-maxsize: "100" 
+            controllerManager:
+              extraArgs:
+                flex-volume-plugin-dir: "/etc/kubernetes/kubelet-plugins/volume/exec"
+                terminated-pod-gc-threshold: "10"
+                profiling: "false"
+            scheduler:
+              extraArgs:
+                profiling: "false"
+            ---
+            apiVersion: kubelet.config.k8s.io/v1beta1
+            kind: KubeletConfiguration
+            cgroupDriver: systemd
+            serverTLSBootstrap: true
+            ---
+            apiVersion: kubeadm.k8s.io/v1beta3
+            kind: InitConfiguration
+            nodeRegistration:
+              criSocket: "unix:///var/run/crio/crio.sock"
+          create: true
+          mode: 0644
+        register: kubeadm_config
+
+      - name: Kubeadm reset
+        ansible.builtin.command: kubeadm reset --force
+        when: kubeadm_config is changed
+
+      - name: Kubeadm Control Plane Images Pull
+        ansible.builtin.command: kubeadm config images pull
+        when: kubeadm_config is changed
+
+      - name: Kubernetes Audit Policy
+        ansible.builtin.blockinfile:
+          path: /etc/kubernetes/audit-policy.yaml
+          block: |
+            # Log all requests at the Metadata level.
+            apiVersion: audit.k8s.io/v1
+            kind: Policy
+            rules:
+            - level: Metadata
+          create: true
+          mode: 0644
+
+      - name: Kubeadm init
+        ansible.builtin.command: kubeadm init --config=/tmp/kubeadm-config.yml --upload-certs --skip-phases=addon/kube-proxy
+        when: kubeadm_config is changed
+
+      - name: Setup kubeconfig for vagrant user
+        ansible.builtin.command: "{{ item }}"
+        loop:
+          - mkdir -p /home/vagrant/.kube
+          - cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
+          - chown vagrant:vagrant /home/vagrant/.kube/config
+
+      - name: Install Kubernetes autocomplete
+        ansible.builtin.lineinfile:
+          path: ~/.bashrc
+          line: "{{ item }}"
+        loop:
+          - source <(kubectl completion bash)
+          - alias k=kubectl
+          - complete -o default -F __start_kubectl k
+        become_user: vagrant
+        become: false
+
+      - name: Security kubelet
+        ansible.builtin.lineinfile:
+          path: /etc/sysconfig/kubelet
+          regexp: '^KUBELET_EXTRA_ARGS=$'
+          line: "KUBELET_EXTRA_ARGS=--protect-kernel-defaults=true --anonymous-auth=false"
+          mode: 0644
+
+      - name: Restart kubelet
+        ansible.builtin.service:
+          name: kubelet
+          daemon_reload: true
+          state: restarted
+          enabled: true
+
+      - name: Wait kubelet
+        ansible.builtin.pause:
+          seconds: 20
+
+      - name: Kubelet certificates approve
+        ansible.builtin.shell: kubectl get csr --no-headers | grep Pending |  awk '{print $1}' | tr '\n' ' ' | xargs kubectl certificate approve
+        become_user: vagrant
+        become: false
+
+  - name: Cilium install
+    block:
+      - name: Download cilium
+        ansible.builtin.unarchive:
+          src: https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz
+          dest: /usr/local/bin
+          remote_src: true
+        register: download_cilium
+
+      - name: Cilium install on Kubernetes
+        ansible.builtin.command: cilium install --config ipam=kubernetes
+        become_user: vagrant
+        become: false
+        when: download_cilium is changed
+
+  - name: Generate Token Join for worker nodes
+    block:
+      - name: Generate join command
+        ansible.builtin.command: kubeadm token create --print-join-command
+        register: join_command
+
+      - name: Copy join command to local file
+        become: false
+        delegate_to: localhost
+        ansible.builtin.copy:
+          content: "{{ join_command.stdout_lines[0] }}"
+          dest: "./join-command"
+          mode: 0777

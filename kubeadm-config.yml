@@ -1,0 +1,48 @@
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+kubernetesVersion: {{ kubernetes_release }}
+controlPlaneEndpoint: "192.168.56.10:6443"
+networking:
+  dnsDomain: cluster.local
+  podSubnet: 10.11.0.0/16
+  serviceSubnet: 172.16.0.0/16
+apiServer:
+  extraVolumes:
+  - name: "audit"
+    hostPath: "/etc/kubernetes/audit-policy.yaml"
+    mountPath: "/etc/kubernetes/audit-policy.yaml"
+    readOnly: true
+    pathType: File
+  - name: "audit-log"
+    hostPath: "/var/log/kubernetes/audit/"
+    mountPath: "/var/log/kubernetes/audit/"
+    readOnly: false
+    pathType: DirectoryOrCreate
+  extraArgs:
+    profiling: "false"
+    enable-admission-plugins: "NodeRestriction,AlwaysPullImages"
+    audit-policy-file: "/etc/kubernetes/audit-policy.yaml"
+    audit-log-path: "/var/log/kubernetes/audit/audit.log"
+    audit-log-maxage: "30"    
+    audit-log-maxbackup: "10" 
+    audit-log-maxsize: "100" 
+controllerManager:
+  extraArgs:
+    flex-volume-plugin-dir: "/etc/kubernetes/kubelet-plugins/volume/exec"
+    terminated-pod-gc-threshold: "10"
+    profiling: "false"
+scheduler:
+  extraArgs:
+    profiling: "false"
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+serverTLSBootstrap: true
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: InitConfiguration
+nodeRegistration:
+  criSocket: "unix:///var/run/crio/crio.sock"
+localAPIEndpoint:
+  advertiseAddress: "192.168.56.10"
