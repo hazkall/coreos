@@ -21,6 +21,7 @@ apiServer:
   extraArgs:
     profiling: "false"
     enable-admission-plugins: "NodeRestriction,AlwaysPullImages"
+    request-timeout: "300s"
     audit-policy-file: "/etc/kubernetes/audit-policy.yaml"
     audit-log-path: "/var/log/kubernetes/audit/audit.log"
     audit-log-maxage: "30"    
@@ -39,6 +40,10 @@ apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 cgroupDriver: systemd
 serverTLSBootstrap: true
+protectKernelDefaults: true
+anonymous:
+  enabled: false
+eventRecordQPS: 0
 ---
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: InitConfiguration
