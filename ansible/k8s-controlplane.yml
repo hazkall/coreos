@@ -2,6 +2,12 @@
 - hosts: all
   become: true
   tasks:
+  - name: Set hostname to node
+    hostname:
+      name: "{{ hostname }}"
+      use: systemd
+    register: set_hostname
+
   - name: Configure Kubernetes Network
     block:
       - name: Ensure Network modules
@@ -12,20 +18,19 @@
           - overlay
           - br_netfilter
 
-  - name: Enable CRI-O
+  - name: Enable Kubernetes Services
     block:
-      - name: Start service CRI-O
+      - name: Start CRI-O
         ansible.builtin.service:
           name: crio
           daemon_reload: true
           state: started
           enabled: true
 
-  - name: Enable Kubelet
-    block:
-      - name: Start kubelet
+      - name: Enable Kubelet
         ansible.builtin.service:
           name: kubelet
+          daemon_reload: true
           enabled: true
 
   - name: Kubeadm Cluster bootstrap
@@ -56,6 +61,7 @@
               extraArgs:
                 profiling: "false"
                 enable-admission-plugins: "NodeRestriction,AlwaysPullImages"
+                request-timeout: "300s"
                 audit-policy-file: "/etc/kubernetes/audit-policy.yaml"
                 audit-log-path: "/var/log/kubernetes/audit/audit.log"
                 audit-log-maxage: "30"    
@@ -74,6 +80,10 @@
             kind: KubeletConfiguration
             cgroupDriver: systemd
             serverTLSBootstrap: true
+            protectKernelDefaults: true
+            anonymous:
+              enabled: false
+            eventRecordQPS: 0
             ---
             apiVersion: kubeadm.k8s.io/v1beta3
             kind: InitConfiguration
@@ -124,20 +134,6 @@
           - complete -o default -F __start_kubectl k
         become_user: vagrant
         become: false
-
-      - name: Security kubelet
-        ansible.builtin.lineinfile:
-          path: /etc/sysconfig/kubelet
-          regexp: '^KUBELET_EXTRA_ARGS=$'
-          line: "KUBELET_EXTRA_ARGS=--protect-kernel-defaults=true --anonymous-auth=false"
-          mode: 0644
-
-      - name: Restart kubelet
-        ansible.builtin.service:
-          name: kubelet
-          daemon_reload: true
-          state: restarted
-          enabled: true
 
       - name: Wait kubelet
         ansible.builtin.pause:

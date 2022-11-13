@@ -64,8 +64,28 @@ storage:
           net.bridge.bridge-nf-call-iptables  = 1
           net.ipv4.ip_forward                 = 1
           net.bridge.bridge-nf-call-ip6tables = 1
+    # Kubelet Kernel Protection
+    - path: /etc/sysctl.d/75-kubelet.conf
+      mode: 0644
+      overwrite: true
+      contents:
+        inline: |
+          kernel.keys.root_maxbytes=25000000
+          kernel.keys.root_maxkeys=1000000
+          kernel.panic=10
+          kernel.panic_on_oops=1
+          vm.overcommit_memory=1
+          vm.panic_on_oom=0
 passwd: # setting login credentials
-  users:
+  users:   
+    - name: vagrant
+      groups:
+        - sudo
+        - wheel
+        - docker
+      ssh_authorized_keys:
+        - ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA6NF8iallvQVp22WDkTkyrtvp9eWW6A8YVr+kz4TjGYe7gHzIw+niNltGEFHzD8+v1I2YJ6oXevct1YeS0o9HZyN1Q9qgCgzUFtdOKLv6IedplqoPkcmF0aYet2PkEDo3MlTBckFXPITAMzF8dJSIFo9D8HfdOV0IAdx4O7PtixWKn5y2hMNG0zQPyUecp4pzC6kivAIhyfHilFR61RGL+GPXQ2MWZWFYbAGjyiYJnAmCP3NOTd0jMZEnDkbUvxhMmBYSdETk1rRgm+R4LOzFUGaHqHDLKLX+FIPKcF96hrucXzcWyLbIbEgE98OHlnVYCzRdK8jlqm8tehUc9c9WhQ== vagrant insecure public key
+
     - name: core
       groups:
         - sudo
@@ -73,11 +93,3 @@ passwd: # setting login credentials
         - docker
       ssh_authorized_keys:
         - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMABwIDFfdiUNdcxuykWeerVEiCIjzw/A8ZBz7HL+Ar7 core
-    
-    - name: vagrant
-      groups:
-        - sudo
-        - wheel
-        - docker
-      ssh_authorized_keys:
-        - ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA6NF8iallvQVp22WDkTkyrtvp9eWW6A8YVr+kz4TjGYe7gHzIw+niNltGEFHzD8+v1I2YJ6oXevct1YeS0o9HZyN1Q9qgCgzUFtdOKLv6IedplqoPkcmF0aYet2PkEDo3MlTBckFXPITAMzF8dJSIFo9D8HfdOV0IAdx4O7PtixWKn5y2hMNG0zQPyUecp4pzC6kivAIhyfHilFR61RGL+GPXQ2MWZWFYbAGjyiYJnAmCP3NOTd0jMZEnDkbUvxhMmBYSdETk1rRgm+R4LOzFUGaHqHDLKLX+FIPKcF96hrucXzcWyLbIbEgE98OHlnVYCzRdK8jlqm8tehUc9c9WhQ== vagrant insecure public key 

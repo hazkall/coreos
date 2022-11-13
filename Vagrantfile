@@ -7,19 +7,19 @@ Vagrant.configure("2") do |config|
   # config.ssh.private_key_path = "./coreos"
   config.vm.synced_folder ".", "/vagrant", disabled: true
 
-  config.vm.provider :libvirt do |libvirt|
-    libvirt.driver = "kvm"
-    libvirt.cpus = 2
-    libvirt.memory = 4096
-  end
-
   config.vm.define "k8s-controlplane", primary: true do |controlplane|
     controlplane.vm.box = IMAGE_NAME
     controlplane.vm.hostname = "k8s-controlplane"
+    controlplane.vm.provider :libvirt do |libvirt|
+      libvirt.driver = "kvm"
+      libvirt.cpus = 2
+      libvirt.memory = 4096
+    end
     controlplane.vm.provision "ansible" do |ansible|
       ansible.playbook = "ansible/k8s-controlplane.yml"
       ansible.extra_vars = {
           kubernetes_release: "1.25.4",
+          hostname: "k8s-controlplane",
       }
     end
   end
@@ -28,10 +28,16 @@ Vagrant.configure("2") do |config|
     config.vm.define "k8s-node-#{i}" do |node|
         node.vm.box = IMAGE_NAME
         node.vm.hostname = "k8s-node-#{i}"
+        node.vm.provider :libvirt do |libvirt|
+          libvirt.driver = "kvm"
+          libvirt.cpus = 2
+          libvirt.memory = 2048
+        end
         node.vm.provision "ansible" do |ansible|
             ansible.playbook = "ansible/k8s-workers.yml"
             ansible.extra_vars = {
-                kubernetes_release: "1.25.3",
+                kubernetes_release: "1.25.4",
+                hostname: "k8s-node-#{i}",
             }
         end
         if i == NODES

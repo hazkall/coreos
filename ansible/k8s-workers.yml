@@ -2,6 +2,12 @@
 - hosts: all
   become: true
   tasks:
+  - name: Set hostname to node
+    ansible.builtin.hostname:
+      name: "{{ hostname }}"
+      use: systemd
+    register: set_hostname
+
   - name: Configure Kubernetes Network
     block:
       - name: Ensure Network modules
@@ -12,20 +18,19 @@
           - overlay
           - br_netfilter
 
-  - name: Enable CRI-O
+  - name: Enable Kubernetes Services
     block:
-      - name: Start service CRI-O
+      - name: Start CRI-O
         ansible.builtin.service:
           name: crio
           daemon_reload: true
           state: started
           enabled: true
 
-  - name: Enable Kubelet
-    block:
-      - name: Start kubelet
+      - name: Enable Kubelet
         ansible.builtin.service:
           name: kubelet
+          daemon_reload: true
           enabled: true
 
   - name: Token Join for worker nodes
@@ -41,22 +46,6 @@
         ansible.builtin.command: sh /tmp/join-command.sh
         when: token_kubeadm is changed
 
-      - name: Pause for 20 seconds for worker node join
+      - name: Wait kubelet
         ansible.builtin.pause:
           seconds: 20
-
-  - name: Security kubelet Configuration
-    block:
-      - name: Security kubelet
-        ansible.builtin.lineinfile:
-          path: /etc/sysconfig/kubelet
-          regexp: '^KUBELET_EXTRA_ARGS=$'
-          line: "KUBELET_EXTRA_ARGS=--protect-kernel-defaults=true --anonymous-auth=false"
-          mode: 0644
-
-      - name: Restart kubelet
-        ansible.builtin.service:
-          name: kubelet
-          daemon_reload: true
-          state: restarted
-          enabled: true
