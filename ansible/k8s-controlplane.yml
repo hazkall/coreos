@@ -1,13 +1,8 @@
 ---
 - hosts: all
   become: true
+  name: Kubernetes ControlPlane
   tasks:
-  - name: Set hostname to node
-    hostname:
-      name: "{{ hostname }}"
-      use: systemd
-    register: set_hostname
-
   - name: Configure Kubernetes Network
     block:
       - name: Ensure Network modules
@@ -42,6 +37,7 @@
             apiVersion: kubeadm.k8s.io/v1beta3
             kind: ClusterConfiguration
             kubernetesVersion: {{ kubernetes_release }}
+            controlPlaneEndpoint: "controlplane:6443"
             networking:
               dnsDomain: cluster.local
               podSubnet: 10.11.0.0/16
@@ -64,9 +60,9 @@
                 request-timeout: "300s"
                 audit-policy-file: "/etc/kubernetes/audit-policy.yaml"
                 audit-log-path: "/var/log/kubernetes/audit/audit.log"
-                audit-log-maxage: "30"    
-                audit-log-maxbackup: "10" 
-                audit-log-maxsize: "100" 
+                audit-log-maxage: "30"
+                audit-log-maxbackup: "10"
+                audit-log-maxsize: "100"
             controllerManager:
               extraArgs:
                 flex-volume-plugin-dir: "/etc/kubernetes/kubelet-plugins/volume/exec"
@@ -115,14 +111,36 @@
 
       - name: Kubeadm init
         ansible.builtin.command: kubeadm init --config=/tmp/kubeadm-config.yml --upload-certs --skip-phases=addon/kube-proxy
+        register: kubeadm_init
         when: kubeadm_config is changed
 
-      - name: Setup kubeconfig for vagrant user
-        ansible.builtin.command: "{{ item }}"
+      - name: Creating .kube directory
+        ansible.builtin.file:
+          path: "{{ item }}"
+          state: directory
+          owner: "{{ ansible_user }}"
+          group: "{{ ansible_user }}"
+          mode: 0740
         loop:
-          - mkdir -p /home/vagrant/.kube
-          - cp -i /etc/kubernetes/admin.conf /home/vagrant/.kube/config
-          - chown vagrant:vagrant /home/vagrant/.kube/config
+          - "/home/{{ ansible_user }}/.kube"
+          - "~/.kube"
+
+      - name: Linking admin.conf file to ~/.kube/config
+        ansible.builtin.copy:
+          src: /etc/kubernetes/admin.conf
+          remote_src: true
+          dest: "{{ item }}"
+          mode: 0640
+        loop:
+          - "~/.kube/config"
+          - "/home/{{ ansible_user }}/.kube/config"
+
+      - name: Change owner of kubeconfig
+        ansible.builtin.file:
+          path: /home/{{ ansible_user }}/.kube/config
+          owner: "{{ ansible_user }}"
+          group: "{{ ansible_user }}"
+          mode: 0640
 
       - name: Install Kubernetes autocomplete
         ansible.builtin.lineinfile:
@@ -132,17 +150,19 @@
           - source <(kubectl completion bash)
           - alias k=kubectl
           - complete -o default -F __start_kubectl k
-        become_user: vagrant
+        become_user: "{{ ansible_user }}"
         become: false
 
       - name: Wait kubelet
         ansible.builtin.pause:
           seconds: 20
+        when: kubeadm_init is changed
 
       - name: Kubelet certificates approve
         ansible.builtin.shell: kubectl get csr --no-headers | grep Pending |  awk '{print $1}' | tr '\n' ' ' | xargs kubectl certificate approve
-        become_user: vagrant
+        become_user: "{{ ansible_user }}"
         become: false
+        when: kubeadm_init is changed
 
   - name: Cilium install
     block:
@@ -152,10 +172,14 @@
           dest: /usr/local/bin
           remote_src: true
         register: download_cilium
+        retries: 3
+        delay: 10
+        until: download_cilium is not failed
+        when: kubeadm_init is changed
 
       - name: Cilium install on Kubernetes
         ansible.builtin.command: cilium install --config ipam=kubernetes
-        become_user: vagrant
+        become_user: "{{ ansible_user }}"
         become: false
         when: download_cilium is changed
 
@@ -164,6 +188,7 @@
       - name: Generate join command
         ansible.builtin.command: kubeadm token create --print-join-command
         register: join_command
+        when: kubeadm_init is changed
 
       - name: Copy join command to local file
         become: false
@@ -172,3 +197,4 @@
           content: "{{ join_command.stdout_lines[0] }}"
           dest: "./join-command"
           mode: 0777
+        when: kubeadm_init is changed

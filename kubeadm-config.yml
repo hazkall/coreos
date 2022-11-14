@@ -1,7 +1,7 @@
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: ClusterConfiguration
 kubernetesVersion: {{ kubernetes_release }}
-controlPlaneEndpoint: "192.168.56.10:6443"
+controlPlaneEndpoint: "controlplane:6443"
 networking:
   dnsDomain: cluster.local
   podSubnet: 10.11.0.0/16
@@ -49,5 +49,3 @@ apiVersion: kubeadm.k8s.io/v1beta3
 kind: InitConfiguration
 nodeRegistration:
   criSocket: "unix:///var/run/crio/crio.sock"
-localAPIEndpoint:
-  advertiseAddress: "192.168.56.10"

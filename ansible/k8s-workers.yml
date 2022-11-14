@@ -1,13 +1,8 @@
 ---
 - hosts: all
   become: true
+  name: Kubernetes Workers
   tasks:
-  - name: Set hostname to node
-    ansible.builtin.hostname:
-      name: "{{ hostname }}"
-      use: systemd
-    register: set_hostname
-
   - name: Configure Kubernetes Network
     block:
       - name: Ensure Network modules
@@ -35,17 +30,28 @@
 
   - name: Token Join for worker nodes
     block:
+      - name: Check Kubelet Service
+        ansible.builtin.systemd:
+          name: kubelet
+        register: kubelet_status
+
+      - name: Kubeadm reset
+        ansible.builtin.command: kubeadm reset --force
+        when: kubelet_status.status.ActiveState != "active"
+
+      - name: Wait Kubeadm reset
+        ansible.builtin.pause:
+          seconds: 10
+        when: kubelet_status.status.ActiveState != "active"
+
       - name: Copy the join command to server location
         ansible.builtin.copy:
           src: join-command
-          dest: /tmp/join-command.sh 
+          dest: /tmp/join-command.sh
           mode: 0777
         register: token_kubeadm
+        when: kubelet_status.status.ActiveState != "active"
 
       - name: Join the node to cluster
         ansible.builtin.command: sh /tmp/join-command.sh
         when: token_kubeadm is changed
-
-      - name: Wait kubelet
-        ansible.builtin.pause:
-          seconds: 20

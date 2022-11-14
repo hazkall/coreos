@@ -1,22 +1,42 @@
 ---
 - hosts: all
   become: true
+  name: Kubernetes Addons
   tasks:
+  - name: Get Cilium Daemonset Status
+    ansible.builtin.shell: |
+      python3 -c "print($(kubectl get daemonset -n kube-system  cilium -o jsonpath={.status.desiredNumberScheduled})==$(kubectl get daemonset -n kube-system  cilium -o jsonpath={.status.numberReady}))"
+    become_user: "{{ ansible_user }}"
+    become: false
+    register: cilium
+    retries: 20
+    delay: 10
+    until: cilium.stdout == "True"
+
   - name: Helm install
     block:
+      - name: Check if Helm binary exists.
+        ansible.builtin.stat:
+          path: /usr/local/bin/helm
+        register: helm_check
+
       - name: Download helm
-        ansible.builtin.get_url: 
+        ansible.builtin.get_url:
           url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
           dest: /tmp/get_helm.sh
           mode: 0775
-        ignore_errors: true 
-        register: download
+        ignore_errors: true
+        register: helm_download
+        retries: 3
+        delay: 10
+        until: helm_download is not failed
+        when: not helm_check.stat.exists
 
       - name: Install Helm
         ansible.builtin.command: /tmp/get_helm.sh
-        when: download
+        when: helm_download
         register: install_helm
-        become_user: vagrant
+        become_user: "{{ ansible_user }}"
         become: false
 
   - name: Install Kubernetes Metrics server
@@ -25,16 +45,27 @@
         ansible.builtin.shell: |
           helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
           helm repo update
-        become_user: vagrant
+        become_user: "{{ ansible_user }}"
+        register: metrics_server
         become: false
+        retries: 3
+        delay: 10
+        until: metrics_server is not failed
 
       - name: Install Metrics Server
         ansible.builtin.shell: helm upgrade --install metrics-server metrics-server/metrics-server -n kube-system
         ignore_errors: true
-        become_user: vagrant
+        become_user: "{{ ansible_user }}"
         become: false
 
   - name: Kubelet certificates approve
     ansible.builtin.shell: kubectl get csr --no-headers | grep Pending |  awk '{print $1}' | tr '\n' ' ' | xargs kubectl certificate approve
-    become_user: vagrant
+    become_user: "{{ ansible_user }}"
     become: false
+
+  - name: Delete Join Command file
+    become: false
+    delegate_to: localhost
+    ansible.builtin.file:
+      path: "./join-command"
+      state: absent
