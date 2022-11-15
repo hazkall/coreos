@@ -1,7 +1,5 @@
 variant: fcos
 version: 1.4.0
-
-
 storage:
   directories:
     - path: /var/lib/crio
