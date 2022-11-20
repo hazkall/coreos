@@ -46,7 +46,7 @@ sudo cp config.ign /var/lib/libvirt/ignition/
 
 sudo mv fedora-coreos-36.20221014.3.1-qemu.x86_64.qcow2 /var/lib/libvirt/base/
 
-virt-install --connect="qemu:///system" --name="coreos" --vcpus="2" --memory="4096" --os-variant="fedora-coreos-stable" --import --graphics=none --disk="size=10,backing_store=/var/lib/libvirt/base/fedora-coreos-36.20221014.3.1-qemu.x86_64.qcow2" --network bridge=virbr0 --qemu-commandline="-fw_cfg name=opt/com.coreos/config,file=/var/lib/libvirt/ignition/config.ign"
+virt-install --connect="qemu:///system" --name="coreos" --vcpus="2" --memory="4096" --os-variant="fedora-coreos-stable" --import --graphics=none --disk="size=10,backing_store=/var/lib/libvirt/base/fedora-coreos-36.20221030.3.0-qemu.x86_64.qcow2" --network bridge=virbr0 --qemu-commandline="-fw_cfg name=opt/com.coreos/config,file=/var/lib/libvirt/ignition/config.ign"
 
 ## Inside Coreos ##
 
@@ -76,7 +76,9 @@ rm -f coreos.box
 
 ```bash
 
-vagrant up --provider=libvirt --no-parallel
+export VAGRANT_DEFAULT_PROVIDER=libvirt
+
+vagrant up --no-parallel --provider=libvirt
 
 vagrant ssh k8s-controlplane
 

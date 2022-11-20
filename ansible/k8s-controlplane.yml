@@ -76,15 +76,19 @@
             kind: KubeletConfiguration
             cgroupDriver: systemd
             serverTLSBootstrap: true
+            seccompDefault: true
             protectKernelDefaults: true
-            anonymous:
-              enabled: false
+            authentication:
+              anonymous:
+                enabled: false
             eventRecordQPS: 0
             ---
             apiVersion: kubeadm.k8s.io/v1beta3
             kind: InitConfiguration
             nodeRegistration:
               criSocket: "unix:///var/run/crio/crio.sock"
+            kubeletExtraArgs:
+              volume-plugin-dir: "/etc/kubernetes/kubelet-plugins/volume/exec/"
           create: true
           mode: 0644
         register: kubeadm_config
@@ -152,6 +156,12 @@
           - complete -o default -F __start_kubectl k
         become_user: "{{ ansible_user }}"
         become: false
+
+      - name: Configure etcd directory owner
+        ansible.builtin.file:
+          path: /var/lib/etcd
+          owner: etcd
+          group: etcd
 
       - name: Wait kubelet
         ansible.builtin.pause:
